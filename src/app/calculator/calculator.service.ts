@@ -2,6 +2,12 @@ import { Injectable } from '@angular/core';
 
 export type Operator = '+' | '-' | '×' | '÷';
 
+export interface CalculationParams {
+  leftOperand: number;
+  operator: Operator;
+  rightOperand: number;
+}
+
 export interface CalculationResult {
   value: number;
   error?: string;
@@ -11,27 +17,27 @@ export interface CalculationResult {
   providedIn: 'root',
 })
 export class CalculatorService {
-  calculate(a: number, operator: Operator, b: number): CalculationResult {
-    if (isNaN(a) || isNaN(b)) {
+  calculate({ leftOperand, operator, rightOperand }: CalculationParams): CalculationResult {
+    if (isNaN(leftOperand) || isNaN(rightOperand)) {
       return { value: NaN, error: 'Invalid number input' };
     }
 
-    if (!isFinite(a) || !isFinite(b)) {
+    if (!isFinite(leftOperand) || !isFinite(rightOperand)) {
       return { value: NaN, error: 'Number is too large' };
     }
 
     switch (operator) {
       case '+':
-        return { value: a + b };
+        return { value: leftOperand + rightOperand };
       case '-':
-        return { value: a - b };
+        return { value: leftOperand - rightOperand };
       case '×':
-        return { value: a * b };
+        return { value: leftOperand * rightOperand };
       case '÷':
-        if (b === 0) {
+        if (rightOperand === 0) {
           return { value: NaN, error: 'Cannot divide by zero' };
         }
-        return { value: a / b };
+        return { value: leftOperand / rightOperand };
       default:
         return { value: NaN, error: 'Unknown operator' };
     }

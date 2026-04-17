@@ -1,155 +1,190 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CalculatorService, Operator } from './calculator.service';
+
+export interface CalculatorButton {
+  label: string;
+  cssClass: string;
+  handler: () => void;
+}
+
+const MAX_DISPLAY_LENGTH = 15;
+const PRECISION_DIGITS = 10;
 
 @Component({
   selector: 'app-calculator',
-  imports: [CommonModule],
   templateUrl: './calculator.component.html',
   styleUrl: './calculator.component.scss',
 })
 export class CalculatorComponent {
-  display = '0';
-  error = '';
+  private readonly calculatorService = inject(CalculatorService);
 
-  private firstOperand: number | null = null;
-  private currentOperator: Operator | null = null;
-  private waitingForSecondOperand = false;
-  private justEvaluated = false;
+  readonly displayValue = signal('0');
+  readonly errorMessage = signal('');
+  readonly hasError = computed(() => this.errorMessage() !== '');
 
-  constructor(private calculatorService: CalculatorService) {}
+  private readonly firstOperand = signal<number | null>(null);
+  private readonly currentOperator = signal<Operator | null>(null);
+  private readonly isWaitingForSecondOperand = signal(false);
+  private readonly hasJustEvaluated = signal(false);
 
-  get displayValue(): string {
-    return this.display;
-  }
+  readonly buttons: CalculatorButton[] = [
+    { label: 'AC', cssClass: 'btn fn', handler: () => this.clearAll() },
+    { label: '+/−', cssClass: 'btn fn', handler: () => this.toggleSign() },
+    { label: '%', cssClass: 'btn fn', handler: () => this.applyPercent() },
+    { label: '÷', cssClass: 'btn op', handler: () => this.setOperator('÷') },
 
-  onDigit(digit: string): void {
-    this.error = '';
+    { label: '7', cssClass: 'btn', handler: () => this.appendDigit('7') },
+    { label: '8', cssClass: 'btn', handler: () => this.appendDigit('8') },
+    { label: '9', cssClass: 'btn', handler: () => this.appendDigit('9') },
+    { label: '×', cssClass: 'btn op', handler: () => this.setOperator('×') },
 
-    if (this.justEvaluated) {
-      this.display = digit;
-      this.justEvaluated = false;
+    { label: '4', cssClass: 'btn', handler: () => this.appendDigit('4') },
+    { label: '5', cssClass: 'btn', handler: () => this.appendDigit('5') },
+    { label: '6', cssClass: 'btn', handler: () => this.appendDigit('6') },
+    { label: '−', cssClass: 'btn op', handler: () => this.setOperator('-') },
+
+    { label: '1', cssClass: 'btn', handler: () => this.appendDigit('1') },
+    { label: '2', cssClass: 'btn', handler: () => this.appendDigit('2') },
+    { label: '3', cssClass: 'btn', handler: () => this.appendDigit('3') },
+    { label: '+', cssClass: 'btn op', handler: () => this.setOperator('+') },
+
+    { label: '0', cssClass: 'btn zero', handler: () => this.appendDigit('0') },
+    { label: '.', cssClass: 'btn', handler: () => this.appendDecimal() },
+    { label: '=', cssClass: 'btn op', handler: () => this.evaluate() },
+  ];
+
+  appendDigit(digit: string): void {
+    this.errorMessage.set('');
+
+    if (this.hasJustEvaluated()) {
+      this.displayValue.set(digit);
+      this.hasJustEvaluated.set(false);
       return;
     }
 
-    if (this.waitingForSecondOperand) {
-      this.display = digit;
-      this.waitingForSecondOperand = false;
+    if (this.isWaitingForSecondOperand()) {
+      this.displayValue.set(digit);
+      this.isWaitingForSecondOperand.set(false);
     } else {
-      this.display = this.display === '0' ? digit : this.display + digit;
+      const current = this.displayValue();
+      this.displayValue.set(current === '0' ? digit : current + digit);
     }
 
-    if (this.display.length > 15) {
-      this.display = this.display.slice(0, 15);
-    }
+    this.truncateDisplay();
   }
 
-  onDecimal(): void {
-    this.error = '';
+  appendDecimal(): void {
+    this.errorMessage.set('');
 
-    if (this.justEvaluated) {
-      this.display = '0.';
-      this.justEvaluated = false;
+    if (this.hasJustEvaluated()) {
+      this.displayValue.set('0.');
+      this.hasJustEvaluated.set(false);
       return;
     }
 
-    if (this.waitingForSecondOperand) {
-      this.display = '0.';
-      this.waitingForSecondOperand = false;
+    if (this.isWaitingForSecondOperand()) {
+      this.displayValue.set('0.');
+      this.isWaitingForSecondOperand.set(false);
       return;
     }
 
-    if (!this.display.includes('.')) {
-      this.display += '.';
+    if (!this.displayValue().includes('.')) {
+      this.displayValue.update(current => current + '.');
     }
   }
 
-  onOperator(operator: Operator): void {
-    this.error = '';
-    this.justEvaluated = false;
+  setOperator(operator: Operator): void {
+    this.errorMessage.set('');
+    this.hasJustEvaluated.set(false);
 
-    const currentValue = parseFloat(this.display);
+    const currentValue = parseFloat(this.displayValue());
 
-    if (this.firstOperand !== null && !this.waitingForSecondOperand) {
-      const result = this.calculatorService.calculate(
-        this.firstOperand,
-        this.currentOperator!,
-        currentValue
-      );
+    if (this.firstOperand() !== null && !this.isWaitingForSecondOperand()) {
+      const result = this.calculatorService.calculate({
+        leftOperand: this.firstOperand()!,
+        operator: this.currentOperator()!,
+        rightOperand: currentValue,
+      });
+
       if (result.error) {
-        this.error = result.error;
-        this.clear();
+        this.errorMessage.set(result.error);
+        this.clearAll();
         return;
       }
-      this.display = this.formatResult(result.value);
-      this.firstOperand = result.value;
+
+      this.displayValue.set(this.formatResult(result.value));
+      this.firstOperand.set(result.value);
     } else {
-      this.firstOperand = currentValue;
+      this.firstOperand.set(currentValue);
     }
 
-    this.currentOperator = operator;
-    this.waitingForSecondOperand = true;
+    this.currentOperator.set(operator);
+    this.isWaitingForSecondOperand.set(true);
   }
 
-  onEquals(): void {
-    this.error = '';
+  evaluate(): void {
+    this.errorMessage.set('');
 
-    if (this.firstOperand === null || this.currentOperator === null) {
+    if (this.firstOperand() === null || this.currentOperator() === null) {
       return;
     }
 
-    const secondOperand = parseFloat(this.display);
-    const result = this.calculatorService.calculate(
-      this.firstOperand,
-      this.currentOperator,
-      secondOperand
-    );
+    const result = this.calculatorService.calculate({
+      leftOperand: this.firstOperand()!,
+      operator: this.currentOperator()!,
+      rightOperand: parseFloat(this.displayValue()),
+    });
 
     if (result.error) {
-      this.error = result.error;
-      this.clear();
+      this.errorMessage.set(result.error);
+      this.clearAll();
       return;
     }
 
-    this.display = this.formatResult(result.value);
-    this.firstOperand = null;
-    this.currentOperator = null;
-    this.waitingForSecondOperand = false;
-    this.justEvaluated = true;
+    this.displayValue.set(this.formatResult(result.value));
+    this.firstOperand.set(null);
+    this.currentOperator.set(null);
+    this.isWaitingForSecondOperand.set(false);
+    this.hasJustEvaluated.set(true);
   }
 
-  clear(): void {
-    this.display = '0';
-    this.firstOperand = null;
-    this.currentOperator = null;
-    this.waitingForSecondOperand = false;
-    this.justEvaluated = false;
+  clearAll(): void {
+    this.displayValue.set('0');
+    this.firstOperand.set(null);
+    this.currentOperator.set(null);
+    this.isWaitingForSecondOperand.set(false);
+    this.hasJustEvaluated.set(false);
   }
 
-  onToggleSign(): void {
-    this.error = '';
-    if (this.display !== '0') {
-      this.display = this.display.startsWith('-')
-        ? this.display.slice(1)
-        : '-' + this.display;
+  toggleSign(): void {
+    this.errorMessage.set('');
+    const current = this.displayValue();
+    if (current !== '0') {
+      this.displayValue.set(current.startsWith('-') ? current.slice(1) : '-' + current);
     }
   }
 
-  onPercent(): void {
-    this.error = '';
-    const value = parseFloat(this.display);
-    this.display = this.formatResult(value / 100);
+  applyPercent(): void {
+    this.errorMessage.set('');
+    const value = parseFloat(this.displayValue());
+    this.displayValue.set(this.formatResult(value / 100));
+  }
+
+  private truncateDisplay(): void {
+    if (this.displayValue().length > MAX_DISPLAY_LENGTH) {
+      this.displayValue.update(current => current.slice(0, MAX_DISPLAY_LENGTH));
+    }
   }
 
   private formatResult(value: number): string {
     if (!isFinite(value)) {
-      this.error = 'Result is too large';
+      this.errorMessage.set('Result is too large');
       return '0';
     }
-    const str = String(value);
-    if (str.length > 15) {
-      return parseFloat(value.toPrecision(10)).toString();
+    const formatted = String(value);
+    if (formatted.length > MAX_DISPLAY_LENGTH) {
+      return parseFloat(value.toPrecision(PRECISION_DIGITS)).toString();
     }
-    return str;
+    return formatted;
   }
 }

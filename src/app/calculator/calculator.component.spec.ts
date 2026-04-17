@@ -20,120 +20,119 @@ describe('CalculatorComponent', () => {
   });
 
   it('should display 0 initially', () => {
-    expect(component.displayValue).toBe('0');
+    expect(component.displayValue()).toBe('0');
   });
 
   it('should input digits', () => {
-    component.onDigit('5');
-    expect(component.displayValue).toBe('5');
-    component.onDigit('3');
-    expect(component.displayValue).toBe('53');
+    component.appendDigit('5');
+    expect(component.displayValue()).toBe('5');
+    component.appendDigit('3');
+    expect(component.displayValue()).toBe('53');
   });
 
   it('should replace 0 with first digit', () => {
-    component.onDigit('7');
-    expect(component.displayValue).toBe('7');
+    component.appendDigit('7');
+    expect(component.displayValue()).toBe('7');
   });
 
   it('should handle decimal point', () => {
-    component.onDigit('3');
-    component.onDecimal();
-    component.onDigit('5');
-    expect(component.displayValue).toBe('3.5');
+    component.appendDigit('3');
+    component.appendDecimal();
+    component.appendDigit('5');
+    expect(component.displayValue()).toBe('3.5');
   });
 
   it('should not allow multiple decimal points', () => {
-    component.onDigit('3');
-    component.onDecimal();
-    component.onDecimal();
-    component.onDigit('5');
-    expect(component.displayValue).toBe('3.5');
+    component.appendDigit('3');
+    component.appendDecimal();
+    component.appendDecimal();
+    component.appendDigit('5');
+    expect(component.displayValue()).toBe('3.5');
   });
 
   it('should perform addition', () => {
-    component.onDigit('5');
-    component.onOperator('+');
-    component.onDigit('3');
-    component.onEquals();
-    expect(component.displayValue).toBe('8');
+    component.appendDigit('5');
+    component.setOperator('+');
+    component.appendDigit('3');
+    component.evaluate();
+    expect(component.displayValue()).toBe('8');
   });
 
   it('should perform subtraction', () => {
-    component.onDigit('9');
-    component.onOperator('-');
-    component.onDigit('4');
-    component.onEquals();
-    expect(component.displayValue).toBe('5');
+    component.appendDigit('9');
+    component.setOperator('-');
+    component.appendDigit('4');
+    component.evaluate();
+    expect(component.displayValue()).toBe('5');
   });
 
   it('should perform multiplication', () => {
-    component.onDigit('6');
-    component.onOperator('×');
-    component.onDigit('7');
-    component.onEquals();
-    expect(component.displayValue).toBe('42');
+    component.appendDigit('6');
+    component.setOperator('×');
+    component.appendDigit('7');
+    component.evaluate();
+    expect(component.displayValue()).toBe('42');
   });
 
   it('should perform division', () => {
-    component.onDigit('8');
-    component.onOperator('÷');
-    component.onDigit('2');
-    component.onEquals();
-    expect(component.displayValue).toBe('4');
+    component.appendDigit('8');
+    component.setOperator('÷');
+    component.appendDigit('2');
+    component.evaluate();
+    expect(component.displayValue()).toBe('4');
   });
 
   it('should show error for division by zero', () => {
-    component.onDigit('5');
-    component.onOperator('÷');
-    component.onDigit('0');
-    component.onEquals();
-    expect(component.error).toBe('Cannot divide by zero');
+    component.appendDigit('5');
+    component.setOperator('÷');
+    component.appendDigit('0');
+    component.evaluate();
+    expect(component.errorMessage()).toBe('Cannot divide by zero');
   });
 
   it('should clear the calculator', () => {
-    component.onDigit('5');
-    component.onOperator('+');
-    component.onDigit('3');
-    component.clear();
-    expect(component.displayValue).toBe('0');
-    expect(component.error).toBe('');
+    component.appendDigit('5');
+    component.setOperator('+');
+    component.appendDigit('3');
+    component.clearAll();
+    expect(component.displayValue()).toBe('0');
+    expect(component.errorMessage()).toBe('');
   });
 
   it('should toggle sign', () => {
-    component.onDigit('5');
-    component.onToggleSign();
-    expect(component.displayValue).toBe('-5');
-    component.onToggleSign();
-    expect(component.displayValue).toBe('5');
+    component.appendDigit('5');
+    component.toggleSign();
+    expect(component.displayValue()).toBe('-5');
+    component.toggleSign();
+    expect(component.displayValue()).toBe('5');
   });
 
   it('should calculate percent', () => {
-    component.onDigit('5');
-    component.onDigit('0');
-    component.onPercent();
-    expect(component.displayValue).toBe('0.5');
+    component.appendDigit('5');
+    component.appendDigit('0');
+    component.applyPercent();
+    expect(component.displayValue()).toBe('0.5');
   });
 
   it('should chain operations', () => {
-    component.onDigit('5');
-    component.onOperator('+');
-    component.onDigit('3');
-    component.onOperator('+');
-    // At this point 5+3=8 should be shown
-    expect(component.displayValue).toBe('8');
-    component.onDigit('2');
-    component.onEquals();
-    expect(component.displayValue).toBe('10');
+    component.appendDigit('5');
+    component.setOperator('+');
+    component.appendDigit('3');
+    component.setOperator('+');
+    expect(component.displayValue()).toBe('8');
+    component.appendDigit('2');
+    component.evaluate();
+    expect(component.displayValue()).toBe('10');
   });
 
   it('should start new calculation after equals', () => {
-    component.onDigit('5');
-    component.onOperator('+');
-    component.onDigit('3');
-    component.onEquals();
-    expect(component.displayValue).toBe('8');
-    component.onDigit('2');
-    expect(component.displayValue).toBe('2');
+    component.appendDigit('5');
+    component.setOperator('+');
+    component.appendDigit('3');
+    component.evaluate();
+    expect(component.displayValue()).toBe('8');
+    component.appendDigit('2');
+    expect(component.displayValue()).toBe('2');
   });
 
   it('should render calculator buttons in template', () => {
@@ -143,10 +142,10 @@ describe('CalculatorComponent', () => {
   });
 
   it('should display error message in template', () => {
-    component.onDigit('5');
-    component.onOperator('÷');
-    component.onDigit('0');
-    component.onEquals();
+    component.appendDigit('5');
+    component.setOperator('÷');
+    component.appendDigit('0');
+    component.evaluate();
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     const errorEl = compiled.querySelector('.error');

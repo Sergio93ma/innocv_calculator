@@ -1,32 +1,16 @@
 <div class="calculator">
   <div class="display-container">
-    <div class="error" *ngIf="error">{{ error }}</div>
-    <div class="display" [class.has-error]="error">{{ displayValue }}</div>
+    @if (hasError()) {
+      <div class="error">{{ errorMessage() }}</div>
+    }
+    <div class="display" [class.has-error]="hasError()">{{ displayValue() }}</div>
   </div>
 
   <div class="buttons">
-    <button class="btn fn" (click)="clear()">AC</button>
-    <button class="btn fn" (click)="onToggleSign()">+/−</button>
-    <button class="btn fn" (click)="onPercent()">%</button>
-    <button class="btn op" (click)="onOperator('÷')">÷</button>
-
-    <button class="btn" (click)="onDigit('7')">7</button>
-    <button class="btn" (click)="onDigit('8')">8</button>
-    <button class="btn" (click)="onDigit('9')">9</button>
-    <button class="btn op" (click)="onOperator('×')">×</button>
-
-    <button class="btn" (click)="onDigit('4')">4</button>
-    <button class="btn" (click)="onDigit('5')">5</button>
-    <button class="btn" (click)="onDigit('6')">6</button>
-    <button class="btn op" (click)="onOperator('-')">−</button>
-
-    <button class="btn" (click)="onDigit('1')">1</button>
-    <button class="btn" (click)="onDigit('2')">2</button>
-    <button class="btn" (click)="onDigit('3')">3</button>
-    <button class="btn op" (click)="onOperator('+')">+</button>
-
-    <button class="btn zero" (click)="onDigit('0')">0</button>
-    <button class="btn" (click)="onDecimal()">.</button>
-    <button class="btn op" (click)="onEquals()">=</button>
+    @for (button of buttons; track button.label) {
+      <button [class]="button.cssClass" (click)="button.handler()">
+        {{ button.label }}
+      </button>
+    }
   </div>
 </div>
